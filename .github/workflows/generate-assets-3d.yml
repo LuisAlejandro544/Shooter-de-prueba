@@ -1,0 +1,120 @@
+name: Generate 3D Tactical Assets
+
+# Activación estrictamente manual desde la UI de GitHub Actions (móvil o web)
+on:
+  workflow_dispatch:
+    inputs:
+      asset_type:
+        description: 'Categoría del asset táctico'
+        type: choice
+        required: true
+        options:
+          - 'weapon'
+          - 'character'
+          - 'environment'
+        default: 'weapon'
+      asset_model:
+        description: 'Modelo táctico específico a generar'
+        type: choice
+        required: true
+        options:
+          # Armamento táctico realista (Modelos expandidos)
+          - 'tactical_assault_rifle'
+          - 'heavy_combat_shotgun'
+          - 'tactical_smg'
+          - 'service_pistol'
+          - 'marksman_sniper'
+          - 'silenced_carbine'
+          - 'squad_lmg'
+          - 'combat_revolver'
+          # Personajes / Soldados de élite (Datasets expandidos)
+          - 'operator_soldier'
+          - 'enemy_mercenary'
+          - 'covert_specops'
+          - 'desert_trooper'
+          - 'arctic_commando'
+          - 'heavy_juggernaut'
+          # Entorno y coberturas balísticas (Datasets expandidos)
+          - 'tactical_wall_barrier'
+          - 'sandbag_bunker'
+          - 'ammo_supply_crate'
+          - 'anti_tank_hedgehog'
+          - 'shipping_container'
+        default: 'tactical_assault_rifle'
+      include_animations:
+        description: 'Incluir esqueletos (rigging) y animaciones de combate horneadas'
+        type: boolean
+        required: true
+        default: true
+      generate_audio:
+        description: 'Generar archivos de audio balístico (.wav) de disparo y recarga si es arma'
+        type: boolean
+        required: true
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  generate-3d-asset:
+    name: Synthesize Asset & Artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Blender CLI (Headless)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends blender
+          echo "Blender version:"
+          blender --version
+
+      - name: Prepare build staging directory
+        run: |
+          mkdir -p output_staging/models
+          mkdir -p output_staging/audio
+
+      - name: Synthesize 3D Model with Rigging & Animations (100% CC0 / MIT)
+        run: |
+          ANIM_FLAG=""
+          if [ "${{ github.event.inputs.include_animations }}" = "true" ]; then
+            ANIM_FLAG="--animated"
+          fi
+
+          TARGET_GLB="output_staging/models/${{ github.event.inputs.asset_model }}.glb"
+
+          blender -b -P tools/blender/generate_realistic_assets.py -- \
+            --type "${{ github.event.inputs.asset_type }}" \
+            --model "${{ github.event.inputs.asset_model }}" \
+            --output "$TARGET_GLB" \
+            $ANIM_FLAG
+
+          echo "Verificación del modelo 3D generado:"
+          ls -lh "$TARGET_GLB"
+
+      - name: Synthesize Gunfire and Reload Audio (WAV 16-bit 44.1kHz - CC0)
+        if: ${{ github.event.inputs.asset_type == 'weapon' && github.event.inputs.generate_audio == 'true' }}
+        run: |
+          python3 tools/audio/generate_tactical_audio.py \
+            --model "${{ github.event.inputs.asset_model }}" \
+            --output_dir "output_staging/audio"
+
+          echo "Verificación de archivos de audio sintetizados:"
+          ls -lh output_staging/audio
+
+      - name: Upload Tactical Asset Package as Downloadable Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.inputs.asset_model }}-tactical-package
+          path: output_staging/
+          if-no-files-found: error

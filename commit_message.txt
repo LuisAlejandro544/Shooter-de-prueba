@@ -1,10 +1,24 @@
-fix(ci): generacion de gradle wrapper binario y ajuste a JDK 21 para compilacion del APK Debug
+feat(ci): pipeline de generacion de assets 3D con Blender y actualizacion de documentacion FPS
 
-- Se resolvio el error durante la ejecucion de 'chmod +x gradlew && ./gradlew assembleDebug' en GitHub Actions.
-- Causa del problema:
-  * El repositorio no incluia el ejecutable binario de 'gradlew' ni el paquete 'gradle/wrapper/gradle-wrapper.jar', por lo que el comando fallaba al intentar invocar el wrapper.
-  * Gradle 9.3.1 y AGP 9.1.1 requieren compatibilidad con Java 21 en lugar de Java 17 en el runner de GitHub Actions.
-- Correcciones aplicadas:
-  * Se ejecuto la tarea oficial 'gradle wrapper --gradle-version 9.3.1' generando los archivos requeridos: 'gradlew', 'gradlew.bat' y 'gradle/wrapper/gradle-wrapper.jar'.
-  * Se actualizo el workflow '.github/workflows/build-debug.yml' para utilizar 'java-version: 21' (Temurin) compatible con Gradle 9.3.1.
-  * Se conservo la configuracion sin cache y la ejecucion aislada para la compilacion limpia de C++, Rust y Lua.
+- Se actualizo el flujo de trabajo de GitHub Actions '.github/workflows/generate-assets-3d.yml':
+  * Se configuro para activacion estrictamente manual ('workflow_dispatch') desde la interfaz web o movil.
+  * Se elimino la subida y commit automatico de assets al codigo fuente del juego en 'app/src/main/assets/models/'.
+  * Ahora los modelos 3D y audios generados se empaquetan exclusivamente como artefactos descargables ('artifacts') para su inspeccion independiente.
+  * Se anadio el generador automatico de audio balistico de disparo ('_fire.wav') y recarga ('_reload.wav') cuando el asset generado es un arma de fuego.
+
+- Se expandieron los datasets y modelos del generador 'tools/blender/generate_realistic_assets.py':
+  * Armas tacticas ampliadas: 'silenced_carbine', 'squad_lmg', 'combat_revolver', ademas de fusiles, escopetas, subfusiles, pistolas y rifles de francotirador.
+  * Operadores y soldados ampliados: 'desert_trooper', 'arctic_commando', 'heavy_juggernaut', ademas de infanteria estandar, mercenarios y fuerzas especiales.
+  * Entorno y coberturas ampliadas: 'anti_tank_hedgehog' (erizos checos de acero), 'shipping_container' (contenedores corrugados), búnkers y barricadas balisticas.
+  * Jerarquia de huesos, rigging y animaciones horneadas ('Anim_Fire', 'Anim_Reload', 'Anim_CombatIdle', 'Anim_CombatRun').
+
+- Se creo la herramienta de audio 'tools/audio/generate_tactical_audio.py':
+  * Sintesis de ondas de choque supersonicas, deflagracion en recamara, golpe grave subsonico y resonancia metalica (WAV PCM 16-bit 44.1kHz).
+  * Sintesis de la secuencia mecanica de recarga (extraccion de cargador, insercion y acerrojamiento).
+  * Cumplimiento estricto de licencias: 100% sintetizado mediante formulas matematicas bajo CC0 (Dominio Publico) y MIT, sin dependencias ni atribucion (Cero CC-BY).
+
+- Se mantiene la alineacion de la documentacion tecnica del proyecto:
+  * 'README.md': Alineacion del proyecto como FPS tactico movil estilo Call of Duty y guia de descarga de artefactos 3D y audio.
+  * 'ROADMAP.md': Pipeline de assets 3D y audio en la Fase 1 y definicion de mecanicas balisticas en la Fase 2.
+  * 'STRUCTURE.md': Actualizacion del arbol de carpetas y entidades de datos para armas, operadores, coberturas y audio.
+  * 'AI_CONTEXT.md': Incorporacion de directrices de estilo CoD, contexto de ejecucion desde movil y veto estricto a licencias CC-BY.
