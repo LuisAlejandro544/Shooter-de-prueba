@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">PolyStrike 3D</string>
+    <string name="fire">DISPARAR</string>
+    <string name="reload">RECARGAR</string>
+    <string name="score">Puntuación</string>
+    <string name="targets_destroyed">Objetivos</string>
+    <string name="health">Salud</string>
+    <string name="ammo">Munición</string>
+    <string name="validation_title">Validación Shooter 3D</string>
+    <string name="restart">Reiniciar</string>
+</resources>

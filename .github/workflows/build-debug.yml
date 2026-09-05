@@ -1,0 +1,81 @@
+name: Build Android Debug APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-debug-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          # Sin cache deliberadamente según requerimiento
+
+      - name: Set up Android SDK & NDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK & CMake
+        run: |
+          yes | sdkmanager --licenses
+          sdkmanager --install "ndk;25.1.8937393" "cmake;3.22.1"
+
+      - name: Set up Rust Toolchain & Android Targets
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android, x86_64-linux-android
+          # Sin cache de cargo
+
+      - name: Configure Cargo Android Linkers
+        run: |
+          mkdir -p ~/.cargo
+          cat << 'EOF' > ~/.cargo/config.toml
+          [target.aarch64-linux-android]
+          ar = "${ANDROID_HOME}/ndk/25.1.8937393/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar"
+          linker = "${ANDROID_HOME}/ndk/25.1.8937393/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang"
+
+          [target.x86_64-linux-android]
+          ar = "${ANDROID_HOME}/ndk/25.1.8937393/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar"
+          linker = "${ANDROID_HOME}/ndk/25.1.8937393/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android24-clang"
+          EOF
+
+      - name: Compile Rust Core Library
+        run: |
+          cargo build --manifest-path app/src/main/rust/polystrike_core/Cargo.toml --target aarch64-linux-android --target x86_64-linux-android
+          mkdir -p app/src/main/jniLibs/arm64-v8a app/src/main/jniLibs/x86_64
+          cp app/src/main/rust/polystrike_core/target/aarch64-linux-android/debug/libpolystrike_core.so app/src/main/jniLibs/arm64-v8a/
+          cp app/src/main/rust/polystrike_core/target/x86_64-linux-android/debug/libpolystrike_core.so app/src/main/jniLibs/x86_64/
+
+      - name: Generate In-Action Debug Keystore
+        run: |
+          keytool -genkeypair -v \
+            -keystore debug.keystore \
+            -alias androiddebugkey \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass android \
+            -keypass android \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-disabled: true # Sin cache deliberadamente según requerimiento
+
+      - name: Build Debug APK with Gradle (compiling C++, Lua and Kotlin)
+        run: |
+          chmod +x gradlew || true
+          ./gradlew assembleDebug --no-daemon --no-build-cache
+
+      - name: Upload Debug APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PolyStrike-Debug-APK
+          path: app/build/outputs/apk/debug/*.apk

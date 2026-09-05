@@ -1,0 +1,6 @@
+{
+  "name": "PolyStrike 3D",
+  "description": "Juego shooter 3D en formato horizontal para validación con gráficos OpenGL ES, controles táctiles y objetivos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

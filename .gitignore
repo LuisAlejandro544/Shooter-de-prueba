@@ -1,0 +1,50 @@
+# Build & IDE Artifacts
+*.iml
+.gradle
+.kotlin
+/local.properties
+local.properties
+.env
+.env.local
+debug.keystore
+*.jks
+*.keystore
+
+# Android Studio / IntelliJ
+/.idea/
+.idea/
+/captures
+
+# OS Artifacts
+.DS_Store
+Thumbs.db
+
+# Gradle build output
+/build
+build/
+*/build/
+
+# C / C++ & NDK Build Artifacts
+.externalNativeBuild/
+.cxx/
+*.o
+*.obj
+*.d
+*.ninja
+.ninja_*
+ninja.log
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Rust Artifacts
+**/target/
+polystrike_core/target/
+**/*.rs.bk
+*.pdb
+
+# Lua Compilation & Bytecode Artifacts
+*.luac
+*.out
+/tmp/

@@ -1,0 +1,16 @@
+# Android Module Build
+/build
+build/
+
+# C / C++ & NDK
+.cxx/
+.externalNativeBuild/
+*.o
+*.obj
+
+# Rust
+**/target/
+polystrike_core/target/
+
+# Lua
+*.luac
