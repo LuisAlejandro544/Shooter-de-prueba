@@ -34,16 +34,25 @@ jobs:
 
       - name: Configure Cargo Android Linkers
         run: |
+          NDK_PATH="${ANDROID_HOME}/ndk/25.1.8937393"
+          if [ ! -d "$NDK_PATH" ]; then
+            # Búsqueda fallback en caso de instalación por defecto del runner
+            NDK_PATH=$(find ${ANDROID_HOME}/ndk -maxdepth 1 -mindepth 1 | sort -V | tail -n 1)
+          fi
+          echo "Utilizando NDK en: $NDK_PATH"
+          TOOLCHAIN_BIN="$NDK_PATH/toolchains/llvm/prebuilt/linux-x86_64/bin"
+
           mkdir -p ~/.cargo
-          cat << 'EOF' > ~/.cargo/config.toml
+          cat << EOF > ~/.cargo/config.toml
           [target.aarch64-linux-android]
-          ar = "${ANDROID_HOME}/ndk/25.1.8937393/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar"
-          linker = "${ANDROID_HOME}/ndk/25.1.8937393/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang"
+          ar = "$TOOLCHAIN_BIN/llvm-ar"
+          linker = "$TOOLCHAIN_BIN/aarch64-linux-android24-clang"
 
           [target.x86_64-linux-android]
-          ar = "${ANDROID_HOME}/ndk/25.1.8937393/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar"
-          linker = "${ANDROID_HOME}/ndk/25.1.8937393/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android24-clang"
+          ar = "$TOOLCHAIN_BIN/llvm-ar"
+          linker = "$TOOLCHAIN_BIN/x86_64-linux-android24-clang"
           EOF
+          cat ~/.cargo/config.toml
 
       - name: Compile Rust Core Library
         run: |

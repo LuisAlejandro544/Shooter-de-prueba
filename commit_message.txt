@@ -1,21 +1,10 @@
-feat: arquitectura nativa hibrida PolyStrike 3D (C++, Rust, Lua original, OpenGL ES y CI/CD)
+fix(ci): correccion de rutas de linkers del NDK para compilacion de Rust en GitHub Actions
 
-- Graficos y Jugabilidad 3D:
-  * Motor de renderizado en primera persona con OpenGL ES 2.0 / 3.0, proyección en perspectiva, iluminación difusa y rejilla poligonal.
-  * Orientación fija horizontal (landscape) optimizada para dispositivos táctiles móviles.
-  * Controles táctiles duales: joystick analógico virtual de desplazamiento y superficie gestual para rotación de cámara y disparo reactivo.
-  * Audio sintetizado procedural en tiempo real mediante AudioTrack PCM (disparo e impacto con hit marker).
-  * Detección de colisiones 3D para láseres, dianas móviles dinámicas y sistema de partículas de chispas.
-
-- Integracion Nativa Multi-lenguaje (JNI):
-  * C++ (NDK 25.1 + CMake 3.22): puente de interconexión nativo y soporte de cálculo matricial.
-  * Lua 5.4.7 Original (PUC-Rio): código fuente puro en C embebido y enlazado estáticamente sin wrappers de terceros, permitiendo la ejecución de scripts en tiempo real.
-  * Rust (Cargo + JNI): biblioteca 'polystrike_core' configurada y compilada para arquitecturas Android aarch64 y x86_64.
-  * Puente NativeEngineBridge en Kotlin para comprobación y diagnóstico en vivo de los tres motores nativos desde la interfaz de usuario.
-
-- Optimizacion, Limpieza y CI/CD:
-  * Limpieza exhaustiva de artefactos temporales y carpetas residuales de compilación de Rust (target/).
-  * Configuración estricta de .gitignore para omitir archivos temporales de C++, CMake, NDK, Rust, Lua y Gradle.
-  * Workflow de GitHub Actions para compilación manual de APK Debug con firma interna (debug.keystore) y sin dependencias de caché.
-  * Workflow automatizado de GitHub Actions para sincronizar y sobreescribir mensajes de commit basados en commit_message.txt.
-  * Documentación completa del proyecto: README.md, ROADMAP.md, STRUCTURE.md, AI_CONTEXT.md y AGENTS.md.
+- Se resolvio el fallo en el workflow de compilacion del APK Debug donde Cargo no encontraba los linkers de Android (os error 2).
+- Causa del problema:
+  * El bloque heredaba 'EOF' con comillas literales y una ruta relativa que provocaba que la variable de entorno ${ANDROID_HOME} no se expandiera en tiempo de ejecucion en el contenedor de GitHub Actions.
+- Correcciones aplicadas:
+  * Expansion adecuada de la ruta absoluta del NDK instalada en el runner ($ANDROID_HOME/ndk/25.1.8937393).
+  * Mecanismo de deteccion automatica del NDK en caso de rutas dinamicas del sistema de GitHub Actions.
+  * Inyeccion de rutas completas y directas a las herramientas 'llvm-ar', 'aarch64-linux-android24-clang' y 'x86_64-linux-android24-clang'.
+  * Despliegue validado para la generacion automatica de 'libpolystrike_core.so' en 'jniLibs' antes del ensamblado de Gradle.
