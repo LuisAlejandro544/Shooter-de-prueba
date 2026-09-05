@@ -13,34 +13,11 @@ on:
           - 'character'
           - 'environment'
         default: 'weapon'
-      asset_model:
-        description: 'Modelo táctico específico a generar'
-        type: choice
+      asset_prompt:
+        description: 'Nombre del modelo o prompt (Ej: "ak-47", "glock", "m4a1", "desert_eagle", "barrett_50", "mp5")'
+        type: string
         required: true
-        options:
-          # Armamento táctico realista (Modelos expandidos)
-          - 'tactical_assault_rifle'
-          - 'heavy_combat_shotgun'
-          - 'tactical_smg'
-          - 'service_pistol'
-          - 'marksman_sniper'
-          - 'silenced_carbine'
-          - 'squad_lmg'
-          - 'combat_revolver'
-          # Personajes / Soldados de élite (Datasets expandidos)
-          - 'operator_soldier'
-          - 'enemy_mercenary'
-          - 'covert_specops'
-          - 'desert_trooper'
-          - 'arctic_commando'
-          - 'heavy_juggernaut'
-          # Entorno y coberturas balísticas (Datasets expandidos)
-          - 'tactical_wall_barrier'
-          - 'sandbag_bunker'
-          - 'ammo_supply_crate'
-          - 'anti_tank_hedgehog'
-          - 'shipping_container'
-        default: 'tactical_assault_rifle'
+        default: 'ak-47'
       include_animations:
         description: 'Incluir esqueletos (rigging) y animaciones de combate horneadas'
         type: boolean
@@ -83,6 +60,17 @@ jobs:
         run: |
           mkdir -p output_staging/models
           mkdir -p output_staging/audio
+          mkdir -p output_staging/remote_cache
+
+      - name: Resolve and Query CC0 Public Domain Datasets (Fallback & Kitbashing)
+        id: dataset_resolver
+        run: |
+          python3 tools/blender/fetch_cc0_datasets.py \
+            --query "${{ github.event.inputs.asset_prompt }}" \
+            --output_info "output_staging/dataset_info.json" \
+            --download_to "output_staging/remote_cache/external_mesh.glb"
+
+          cat output_staging/dataset_info.json
 
       - name: Synthesize 3D Model with Rigging & Animations (100% CC0 / MIT)
         run: |
@@ -91,11 +79,17 @@ jobs:
             ANIM_FLAG="--animated"
           fi
 
-          TARGET_GLB="output_staging/models/${{ github.event.inputs.asset_model }}.glb"
+          # Sanitizar nombre de archivo
+          CLEAN_NAME=$(echo "${{ github.event.inputs.asset_prompt }}" | tr '[:upper:]' '[:lower:]' | tr ' ' '_' | tr -cd 'a-z0-9_')
+          if [ -z "$CLEAN_NAME" ]; then
+            CLEAN_NAME="tactical_asset"
+          fi
+
+          TARGET_GLB="output_staging/models/${CLEAN_NAME}.glb"
 
           blender -b -P tools/blender/generate_realistic_assets.py -- \
             --type "${{ github.event.inputs.asset_type }}" \
-            --model "${{ github.event.inputs.asset_model }}" \
+            --model "${{ github.event.inputs.asset_prompt }}" \
             --output "$TARGET_GLB" \
             $ANIM_FLAG
 
@@ -106,7 +100,7 @@ jobs:
         if: ${{ github.event.inputs.asset_type == 'weapon' && github.event.inputs.generate_audio == 'true' }}
         run: |
           python3 tools/audio/generate_tactical_audio.py \
-            --model "${{ github.event.inputs.asset_model }}" \
+            --model "${{ github.event.inputs.asset_prompt }}" \
             --output_dir "output_staging/audio"
 
           echo "Verificación de archivos de audio sintetizados:"
@@ -115,6 +109,6 @@ jobs:
       - name: Upload Tactical Asset Package as Downloadable Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.event.inputs.asset_model }}-tactical-package
+          name: tactical-package-${{ github.event.inputs.asset_prompt }}
           path: output_staging/
           if-no-files-found: error

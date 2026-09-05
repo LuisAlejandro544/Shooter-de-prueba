@@ -2,7 +2,7 @@
 """
 PolyStrike 3D - Audio Generator for Tactical Firearms
 Generates high quality, realistic PCM audio files (WAV 16-bit 44.1kHz mono)
-for gunfire blasts (suppressed, assault rifle, shotgun, sniper, pistol, smg)
+for gunfire blasts (suppressed, assault rifle, shotgun, sniper, pistol, smg, ak47, glock, m4a1, deagle)
 and mechanical reload sequences (mag release, mag slide-out, mag insert, bolt rack).
 
 License: 100% CC0 / MIT (Public Domain / Pure Mathematical Audio Synthesis).
@@ -55,41 +55,71 @@ def generate_gunfire_audio(weapon_model, output_path):
     """
     Sintetiza audio realista de disparo balístico con onda de choque supersónica (crack inicial),
     explosión de propelente en recámara, cuerpo grave subsónico y cola de reverberación balística.
+    Soporta firmas balísticas acústicas para AK-47, Glock, M4A1, Desert Eagle, etc.
     """
     random.seed(42) # Reproducible
+    m = weapon_model.lower().replace("-", "").replace("_", "")
 
-    # Parámetros acústicos por tipo de arma
-    if "sniper" in weapon_model:
-        duration = 0.85
-        thump_freq = 70.0
-        crack_volume = 1.0
-        decay_time = 0.55
+    # Parámetros acústicos específicos por firma balística
+    if "ak" in m or "kalash" in m:
+        # Potente 7.62x39mm: gran thump grave y marcado resonar de acero estampado
+        duration = 0.58
+        thump_freq = 68.0
+        crack_volume = 0.98
+        decay_time = 0.44
         metallic_ring = True
-    elif "shotgun" in weapon_model:
+    elif "glock" in m or "9mm" in m:
+        # 9x19mm Parabellum: disparo seco, rápido y nítido
+        duration = 0.32
+        thump_freq = 115.0
+        crack_volume = 0.88
+        decay_time = 0.20
+        metallic_ring = False
+    elif "m4" in m or "ar15" in m or "carbine" in m:
+        # 5.56x45mm OTAN: crack de alta velocidad y silbido balístico
+        duration = 0.48
+        thump_freq = 86.0
+        crack_volume = 0.95
+        decay_time = 0.35
+        metallic_ring = True
+    elif "desert" in m or "deagle" in m or "magnum" in m:
+        # Masivo calibre .50 Action Express: explosión cavernosa de pistola pesada
+        duration = 0.72
+        thump_freq = 58.0
+        crack_volume = 1.0
+        decay_time = 0.50
+        metallic_ring = True
+    elif "sniper" in m or "barrett" in m:
+        duration = 0.85
+        thump_freq = 50.0
+        crack_volume = 1.0
+        decay_time = 0.58
+        metallic_ring = True
+    elif "shotgun" in m or "remington" in m:
         duration = 0.70
         thump_freq = 55.0
         crack_volume = 0.95
         decay_time = 0.45
         metallic_ring = False
-    elif "smg" in weapon_model:
+    elif "smg" in m or "mp5" in m:
         duration = 0.35
         thump_freq = 110.0
         crack_volume = 0.8
         decay_time = 0.22
         metallic_ring = False
-    elif "pistol" in weapon_model or "revolver" in weapon_model:
+    elif "pistol" in m or "revolver" in m:
         duration = 0.40
         thump_freq = 95.0
         crack_volume = 0.85
         decay_time = 0.28
         metallic_ring = False
-    elif "suppressed" in weapon_model or "covert" in weapon_model:
+    elif "suppressed" in m or "silenced" in m:
         duration = 0.25
         thump_freq = 160.0
         crack_volume = 0.35
         decay_time = 0.12
         metallic_ring = False
-    else: # Fusil de asalto estándar / ametralladora
+    else: # Fusil estándar
         duration = 0.50
         thump_freq = 82.0
         crack_volume = 0.9
@@ -99,7 +129,6 @@ def generate_gunfire_audio(weapon_model, output_path):
     num_samples = int(SAMPLE_RATE * duration)
     samples = [0.0] * num_samples
 
-    # Filtro paso-bajo simple para suavizar el ruido blanco de la deflagración
     filter_val = 0.0
     alpha = 0.35
 
@@ -109,7 +138,6 @@ def generate_gunfire_audio(weapon_model, output_path):
         # 1. Crack inicial (onda de choque balística en los primeros 15ms)
         crack = 0.0
         if t < 0.015:
-            # Pulso no lineal saturado
             crack = (random.random() * 2.0 - 1.0) * (1.0 - t / 0.015) * crack_volume
 
         # 2. Deflagración de pólvora / explosión (ruido filtrado)
@@ -127,12 +155,12 @@ def generate_gunfire_audio(weapon_model, output_path):
         ring = 0.0
         if metallic_ring and t > 0.01:
             ring_env = math.exp(-t / 0.25)
-            ring = math.sin(2.0 * math.pi * 920.0 * t) * ring_env * 0.15
+            ring = math.sin(2.0 * math.pi * 880.0 * t) * ring_env * 0.15
 
         sample = (crack * 0.6) + (explosion * 0.7) + (thump * 0.75) + ring
         samples[i] = sample
 
-    # Normalización para evitar clipping
+    # Normalización
     max_amp = max(abs(s) for s in samples) if samples else 1.0
     if max_amp > 0:
         samples = [s / max_amp * 0.96 for s in samples]
@@ -179,22 +207,16 @@ def generate_reload_audio(weapon_model, output_path):
             f_val += 0.25 * (noise - f_val)
             samples[idx] += f_val * env * intensity
 
-    # Secuencia de recarga:
-    # 0.15s: Liberación de cargador gastado
+    # Secuencia de recarga
     add_metallic_click(0.15, duration_click=0.04, freq=1400.0, intensity=0.75)
     add_slide_friction(0.18, duration_slide=0.16, intensity=0.4)
-
-    # 0.85s: Inserción del nuevo cargador cargado
     add_slide_friction(0.82, duration_slide=0.12, intensity=0.5)
     add_metallic_click(0.92, duration_click=0.03, freq=1100.0, intensity=0.7)
     add_metallic_click(0.96, duration_click=0.045, freq=1600.0, intensity=0.95)
-
-    # 1.30s: Cerrojo / Slide rack (Liberación de corredera o amartillado)
     add_metallic_click(1.28, duration_click=0.03, freq=2200.0, intensity=0.7)
     add_slide_friction(1.30, duration_slide=0.10, intensity=0.45)
     add_metallic_click(1.38, duration_click=0.06, freq=950.0, intensity=0.98)
 
-    # Normalizar
     max_amp = max(abs(s) for s in samples) if samples else 1.0
     if max_amp > 0:
         samples = [s / max_amp * 0.92 for s in samples]
@@ -204,13 +226,14 @@ def generate_reload_audio(weapon_model, output_path):
 
 def main():
     parser = argparse.ArgumentParser(description="Generador de audio táctico militar (100% CC0)")
-    parser.add_argument("--model", type=str, required=True, help="Identificador del arma")
-    parser.add_argument("--output_dir", type=str, default="generated_assets/audio", help="Directorio destino")
+    parser.add_argument("--model", type=str, required=True, help="Identificador o nombre del arma")
+    parser.add_argument("--output_dir", type=str, default="output_staging/audio", help="Directorio destino")
     args = parser.parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)
-    fire_path = os.path.join(args.output_dir, f"{args.model}_fire.wav")
-    reload_path = os.path.join(args.output_dir, f"{args.model}_reload.wav")
+    clean_name = args.model.lower().replace(" ", "_")
+    fire_path = os.path.join(args.output_dir, f"{clean_name}_fire.wav")
+    reload_path = os.path.join(args.output_dir, f"{clean_name}_reload.wav")
 
     generate_gunfire_audio(args.model, fire_path)
     generate_reload_audio(args.model, reload_path)
