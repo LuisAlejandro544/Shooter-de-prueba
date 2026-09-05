@@ -1,10 +1,10 @@
-fix(ci): correccion de rutas de linkers del NDK para compilacion de Rust en GitHub Actions
+fix(ci): generacion de gradle wrapper binario y ajuste a JDK 21 para compilacion del APK Debug
 
-- Se resolvio el fallo en el workflow de compilacion del APK Debug donde Cargo no encontraba los linkers de Android (os error 2).
+- Se resolvio el error durante la ejecucion de 'chmod +x gradlew && ./gradlew assembleDebug' en GitHub Actions.
 - Causa del problema:
-  * El bloque heredaba 'EOF' con comillas literales y una ruta relativa que provocaba que la variable de entorno ${ANDROID_HOME} no se expandiera en tiempo de ejecucion en el contenedor de GitHub Actions.
+  * El repositorio no incluia el ejecutable binario de 'gradlew' ni el paquete 'gradle/wrapper/gradle-wrapper.jar', por lo que el comando fallaba al intentar invocar el wrapper.
+  * Gradle 9.3.1 y AGP 9.1.1 requieren compatibilidad con Java 21 en lugar de Java 17 en el runner de GitHub Actions.
 - Correcciones aplicadas:
-  * Expansion adecuada de la ruta absoluta del NDK instalada en el runner ($ANDROID_HOME/ndk/25.1.8937393).
-  * Mecanismo de deteccion automatica del NDK en caso de rutas dinamicas del sistema de GitHub Actions.
-  * Inyeccion de rutas completas y directas a las herramientas 'llvm-ar', 'aarch64-linux-android24-clang' y 'x86_64-linux-android24-clang'.
-  * Despliegue validado para la generacion automatica de 'libpolystrike_core.so' en 'jniLibs' antes del ensamblado de Gradle.
+  * Se ejecuto la tarea oficial 'gradle wrapper --gradle-version 9.3.1' generando los archivos requeridos: 'gradlew', 'gradlew.bat' y 'gradle/wrapper/gradle-wrapper.jar'.
+  * Se actualizo el workflow '.github/workflows/build-debug.yml' para utilizar 'java-version: 21' (Temurin) compatible con Gradle 9.3.1.
+  * Se conservo la configuracion sin cache y la ejecucion aislada para la compilacion limpia de C++, Rust y Lua.
