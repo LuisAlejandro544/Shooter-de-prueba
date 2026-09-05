@@ -29,6 +29,20 @@ except ImportError:
     print("        blender -b -P tools/blender/generate_realistic_assets.py -- [opciones]")
     sys.exit(1)
 
+# Asegurar que el entorno Python de Blender acceda a las librerías del sistema (numpy para io_scene_gltf2)
+import site
+for p in site.getsitepackages() + [site.getusersitepackages()]:
+    if os.path.exists(p) and p not in sys.path:
+        sys.path.append(p)
+# Rutas comunes en distros Debian/Ubuntu para python3
+for ver in ["3.11", "3.10", "3.12", "3"]:
+    dist_p = f"/usr/lib/python{ver}/dist-packages"
+    if os.path.exists(dist_p) and dist_p not in sys.path:
+        sys.path.append(dist_p)
+    local_p = f"/usr/local/lib/python{ver}/dist-packages"
+    if os.path.exists(local_p) and local_p not in sys.path:
+        sys.path.append(local_p)
+
 
 def parse_args():
     argv = sys.argv

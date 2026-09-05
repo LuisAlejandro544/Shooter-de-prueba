@@ -49,10 +49,15 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Blender CLI (Headless)
+      - name: Install Python Dependencies for Blender and CLI
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install numpy
+
+      - name: Install Blender CLI (Headless) & System NumPy
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends blender
+          sudo apt-get install -y --no-install-recommends blender python3-numpy
           echo "Blender version:"
           blender --version
 
@@ -79,14 +84,17 @@ jobs:
             ANIM_FLAG="--animated"
           fi
 
-          # Sanitizar nombre de archivo
-          CLEAN_NAME=$(echo "${{ github.event.inputs.asset_prompt }}" | tr '[:upper:]' '[:lower:]' | tr ' ' '_' | tr -cd 'a-z0-9_')
+          # Sanitizar nombre de archivo (reemplazar caracteres acentuados, espacios y símbolos)
+          CLEAN_NAME=$(echo "${{ github.event.inputs.asset_prompt }}" | iconv -f utf-8 -t ascii//TRANSLIT 2>/dev/null || echo "${{ github.event.inputs.asset_prompt }}")
+          CLEAN_NAME=$(echo "$CLEAN_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '_' | tr -cd 'a-z0-9_')
           if [ -z "$CLEAN_NAME" ]; then
             CLEAN_NAME="tactical_asset"
           fi
 
           TARGET_GLB="output_staging/models/${CLEAN_NAME}.glb"
 
+          # Ejecución de Blender pasando las rutas de librerías de Python
+          PYTHONPATH="${PYTHONPATH}:$(python3 -c 'import site; print(":".join(site.getsitepackages()))'):/usr/lib/python3/dist-packages" \
           blender -b -P tools/blender/generate_realistic_assets.py -- \
             --type "${{ github.event.inputs.asset_type }}" \
             --model "${{ github.event.inputs.asset_prompt }}" \

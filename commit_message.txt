@@ -1,24 +1,13 @@
-fix(ci): corregir operador de exportacion glTF en Blender y habilitar artefactos independientes
+fix(ci): resolver ModuleNotFoundError 'numpy' en exportador glTF y sanitizacion de nombres UTF-8
 
-- Se corrigio el error 'TypeError: keyword export_armatures unrecognized' en 'tools/blender/generate_realistic_assets.py':
-  * Se sustituyo el parametro obsoleto/inexistente 'export_armatures' por 'export_skins=True' conforme a la API estandar de Blender 3.x/4.x.
-  * Se implemento un bloque de tolerancia a fallos 'try-except' que ajusta dinamicamente los parametros de exportacion hacia un perfil minimo universal de glTF 2.0 en caso de variaciones en la firma del operador.
-  * Asegura la correcta generacion de los archivos '.glb' sin interrumpir el proceso de exportacion headless en GitHub Actions.
+- Diagnostico y solucion del fallo en GitHub Actions ('ModuleNotFoundError: No module named numpy'):
+  * Causa raiz: El complemento oficial de exportacion glTF 2.0 de Blender ('io_scene_gltf2') requiere obligatoriamente 'numpy' para el empaquetado optimizado de buffers binarios de vertices y esqueletos. En runners headless de Ubuntu ('apt-get install blender'), el entorno Python embebido carece de 'python3-numpy' por defecto.
+  * Solucion integral en '.github/workflows/generate-assets-3d.yml':
+    - Se agrego el paquete 'python3-numpy' en la instalacion de paquetes de sistema de Ubuntu.
+    - Se instalo 'numpy' via pip en el entorno Python 3.11 del runner.
+    - Se propaga dinamicamente 'PYTHONPATH' al comando CLI de Blender para enlazar directamente las librerias y modulos compilados.
+  * Respaldo defensivo en 'tools/blender/generate_realistic_assets.py':
+    - Se inyectan dinamicamente las rutas de 'site-packages' y 'dist-packages' del sistema en 'sys.path' al iniciar la ejecucion del script.
 
-- Se consolido el flujo de trabajo de GitHub Actions '.github/workflows/generate-assets-3d.yml':
-  * Operacion exclusivamente manual ('workflow_dispatch') desde la interfaz movil y web.
-  * Se desvinculo la inclusion automatica de assets al codigo fuente ('app/src/main/assets/models/').
-  * Se generan y empaquetan los modelos 3D y pistas de audio sintetizadas (.wav de disparo y recarga) unicamente como artefactos descargables ('artifacts').
-
-- Implementacion de la Estrategia 2: Kitbashing de Alta Fidelidad y Busqueda en Datasets CC0:
-  * Se incorporo 'tools/blender/fetch_cc0_datasets.py': modulo de resolucion automatica que procesa solicitudes en texto libre (ej: 'ak-47', 'glock', 'm4a1', 'desert_eagle', 'barrett_50', 'mp5', 'remington870'). Realiza consultas y mapeos contra catalogos y repositorios de Dominio Publico (CC0) y descarga mallas externas si no se encuentran en los presets nativos.
-  * Se expandio el motor 'tools/blender/generate_realistic_assets.py' con blueprints parametricos de alta fidelidad:
-    - AK-47: cajon de mecanismos de acero estampado, cañon con bloque de gases y alza tangente, cargador curvo segmentado (banana mag) de 30 tiros y culata/guardamanos de madera.
-    - Glock: armazon de polimero negro con riel inferior para linterna/laser, empuñadura ergonomica, corredera de acero templado con miras de 3 puntos y cargador de 17 cartuchos.
-    - M4A1: receptor mil-spec con rieles Picatinny cuadruples, apagallamas birdcage, bloque de mira en triangulo, culata crane retractil y cargador STANAG.
-    - Desert Eagle, Barrett .50, MP5 y escopetas de corredera con sus respectivas geometrias y calibraciones.
-  * Se actualizo 'tools/audio/generate_tactical_audio.py' con firmas acusticas realistas por calibre (7.62x39mm con resonancia de cajon de acero para AK-47, 9x19mm seco para Glock, 5.56x45mm de alta velocidad para M4A1, y .50 AE cavernoso para Desert Eagle).
-  * Se actualizo el workflow '.github/workflows/generate-assets-3d.yml' permitiendo introducir cualquier texto o modelo libre ('asset_prompt') con integracion directa del resolver de datasets y empaquetado del artefacto descargable.
-
-- Se mantiene la compatibilidad de licencias estricta:
-  * Recursos y logica de generacion 100% bajo CC0 (Dominio Publico) y MIT, sin dependencias con requerimiento de atribucion (Cero CC-BY).
+- Correccion en la sanitizacion de nombres de archivos con caracteres especiales o acentos:
+  * Se incorporo 'iconv -f utf-8 -t ascii//TRANSLIT' en la generacion de la ruta de salida, permitiendo que prompts como 'ak47 clásica' o 'fusil táctico' se transliteren limpiamente a 'ak47_clasica.glb' sin perderse caracteres ni provocar discrepancias en 'ls'.
